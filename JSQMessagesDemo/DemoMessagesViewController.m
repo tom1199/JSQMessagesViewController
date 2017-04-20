@@ -18,6 +18,12 @@
 
 #import "DemoMessagesViewController.h"
 
+@interface DemoMessagesViewController ()
+
+@property (strong, nonatomic) NSMutableArray<JSQMessage *> *selectedMessages;
+
+@end
+
 @implementation DemoMessagesViewController
 
 #pragma mark - View lifecycle
@@ -64,10 +70,13 @@
     
     self.showLoadEarlierMessagesHeader = YES;
     
-    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithImage:[UIImage jsq_defaultTypingIndicatorImage]
-                                                                              style:UIBarButtonItemStyleBordered
-                                                                             target:self
-                                                                             action:@selector(receiveMessagePressed:)];
+    UIBarButtonItem *receiveItem = [[UIBarButtonItem alloc] initWithImage:[UIImage jsq_defaultTypingIndicatorImage]style:UIBarButtonItemStylePlain
+                                                                   target:self
+                                                                   action:@selector(receiveMessagePressed:)];
+    
+    UIBarButtonItem *editItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemEdit target:self action:@selector(toggleEditingMode:)];
+    
+    self.navigationItem.rightBarButtonItems = @[editItem, receiveItem];
 
     /**
      *  Register custom menu actions for cells.
@@ -319,7 +328,10 @@
     [self.delegateModal didDismissJSQDemoViewController:self];
 }
 
-
+-(void) toggleEditingMode:(UIBarButtonItem *)sender
+{
+    self.editing = !self.editing;
+}
 
 
 #pragma mark - JSQMessagesViewController method overrides
@@ -671,6 +683,41 @@
 - (void)collectionView:(JSQMessagesCollectionView *)collectionView didTapCellAtIndexPath:(NSIndexPath *)indexPath touchLocation:(CGPoint)touchLocation
 {
     NSLog(@"Tapped cell at %@!", NSStringFromCGPoint(touchLocation));
+}
+
+#pragma mark - Bulk edit
+
+- (BOOL)isEditableItemSelectedAtIndexPath:(NSIndexPath *)indexPath
+{
+    JSQMessage *msg = [self.demoData.messages objectAtIndex:indexPath.item];
+    
+    return [self.selectedMessages containsObject:msg];
+}
+
+- (BOOL)collectionView:(JSQMessagesCollectionView *)collectionView
+                layout:(JSQMessagesCollectionViewFlowLayout *)collectionViewLayout
+shouldEditItemAtIndexPath:(NSIndexPath *)indexPath
+{
+    return YES;
+}
+
+- (void)collectionView:(JSQMessagesCollectionView *)collectionView
+editingOverlayAtIndexPath:(NSIndexPath *)indexPath
+        becomeSelected:(BOOL)selected
+{
+    JSQMessage *msg = [self.demoData.messages objectAtIndex:indexPath.item];
+    BOOL alreadySelected = [self.selectedMessages containsObject:msg];
+    
+    if (selected && !alreadySelected) {
+        [self.selectedMessages addObject:msg];
+    } else if (!selected && alreadySelected) {
+        [self.selectedMessages removeObject:msg];
+    }
+}
+
+- (void)finishedEditing
+{
+    NSLog(@"finished editing");
 }
 
 #pragma mark - JSQMessagesComposerTextViewPasteDelegate methods
